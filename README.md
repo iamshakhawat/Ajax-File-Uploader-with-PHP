@@ -3,6 +3,8 @@
 
 A modern, secure, and user-friendly file uploading web application with shareable links.
 
+![Secure File Uploader](https://raw.githubusercontent.com/iamshakhawat/Ajax-File-Uploader-with-PHP/refs/heads/main/uplaod.png)
+
 ## Features
 
 - 🔒 **Secure Uploads** - Multiple security checks including MIME type validation and malicious content scanning
