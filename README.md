@@ -139,4 +139,7 @@ For issues or questions, please open a GitHub issue.
 
 ---
 
-Made with ❤️ by the community
+## Author
+
+**Shakhawat** - [shakhawatdev.com](https://shakhawatdev.com)
+Made with ❤️ for the community
