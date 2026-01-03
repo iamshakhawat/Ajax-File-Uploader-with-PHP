@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure File Uploader</title>
+    
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <style>
+        /* Custom styles for drag and drop area */
+        .drag-area {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        
+        .drag-area.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        
+        /* File type icon colors */
+        .file-icon-pdf { color: #ef4444; }
+        .file-icon-doc { color: #3b82f6; }
+        .file-icon-img { color: #10b981; }
+        .file-icon-video { color: #8b5cf6; }
+        .file-icon-audio { color: #f59e0b; }
+        .file-icon-zip { color: #6366f1; }
+        .file-icon-code { color: #ec4899; }
+        .file-icon-default { color: #6b7280; }
+        
+        /* Progress bar animation */
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        /* Modal backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8 px-4">
+    
+    <!-- Main Container -->
+    <div class="max-w-4xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-cloud-upload-alt text-blue-600"></i> Secure File Uploader
+            </h1>
+            <p class="text-gray-600">Upload your files securely and get shareable links</p>
+            <a href="download.html" class="inline-block mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-300">
+                <i class="fas fa-list mr-2"></i> View All Files
+            </a>
+        </div>
+        
+        <!-- Upload Card -->
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            
+            <!-- Drag & Drop Area -->
+            <div id="dragDropArea" class="drag-area rounded-xl p-12 text-center cursor-pointer mb-6">
+                <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">Drag & Drop Files Here</h3>
+                <p class="text-gray-500 mb-4">or</p>
+                
+                <!-- File Input (Hidden) -->
+                <input type="file" id="fileInput" name="files[]" multiple class="hidden">
+                
+                <!-- Browse Button -->
+                <button type="button" id="browseBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300">
+                    <i class="fas fa-folder-open mr-2"></i> Browse Files
+                </button>
+                
+                <p class="text-sm text-gray-400 mt-4">Maximum file size: 100MB per file</p>
+            </div>
+            
+            <!-- Selected Files List -->
+            <div id="fileListContainer" class="hidden mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-list mr-2"></i> Selected Files (<span id="fileCount">0</span>)
+                    </h4>
+                    <button id="clearAllBtn" class="text-red-600 hover:text-red-700 font-semibold">
+                        <i class="fas fa-trash-alt mr-1"></i> Clear All
+                    </button>
+                </div>
+                
+                <!-- Files will be appended here -->
+                <div id="fileList" class="space-y-3 max-h-96 overflow-y-auto"></div>
+            </div>
+            
+            <!-- Upload Button -->
+            <div id="uploadBtnContainer" class="hidden">
+                <button id="uploadBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg transition duration-300 shadow-lg">
+                    <i class="fas fa-upload mr-2"></i> Upload Files
+                </button>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <!-- Success Modal (Hidden by default) -->
+    <div id="successModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-8 relative">
+            
+            <!-- Close Button -->
+            <button id="closeModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+            
+            <!-- Success Icon -->
+            <div class="text-center mb-6">
+                <div class="inline-block bg-green-100 rounded-full p-4 mb-4">
+                    <i class="fas fa-check-circle text-5xl text-green-600"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800">Upload Successful!</h3>
+                <p class="text-gray-600 mt-2">Your files have been uploaded successfully</p>
+            </div>
+            
+            <!-- File Links -->
+            <div id="fileLinks" class="space-y-3 max-h-96 overflow-y-auto mb-6">
+                <!-- Links will be appended here -->
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex gap-3">
+                <a href="download.html" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition duration-300 text-center">
+                    <i class="fas fa-list mr-2"></i> View All Files
+                </a>
+                <button id="doneBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-300">
+                    <i class="fas fa-upload mr-2"></i> Upload More
+                </button>
+            </div>
+            
+        </div>
+    </div>
+    
+    <script>
+        $(document).ready(function() {
+            
+            // Store selected files
+            let selectedFiles = [];
+            
+            // Get DOM elements
+            const $dragDropArea = $('#dragDropArea');
+            const $fileInput = $('#fileInput');
+            const $browseBtn = $('#browseBtn');
+            const $fileListContainer = $('#fileListContainer');
+            const $fileList = $('#fileList');
+            const $fileCount = $('#fileCount');
+            const $uploadBtnContainer = $('#uploadBtnContainer');
+            const $uploadBtn = $('#uploadBtn');
+            const $clearAllBtn = $('#clearAllBtn');
+            const $successModal = $('#successModal');
+            const $closeModal = $('#closeModal');
+            const $doneBtn = $('#doneBtn');
+            const $fileLinks = $('#fileLinks');
+            
+            // Browse button click - trigger file input
+            $browseBtn.on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $fileInput[0].click();
+            });
+            
+            // Drag and drop area click - trigger file input (but not on button)
+            $dragDropArea.on('click', function(e) {
+                // Only trigger if clicking the drag area itself, not the button
+                if (!$(e.target).closest('#browseBtn').length && e.target.id !== 'fileInput') {
+                    e.preventDefault();
+                    $fileInput[0].click();
+                }
+            });
+            
+            // File input change event - handle file selection
+            $fileInput.on('change', function(e) {
+                e.stopPropagation();
+                handleFiles(this.files);
+            });
+            
+            // Prevent default drag behaviors
+            $dragDropArea.on('drag dragstart dragend dragover dragenter dragleave drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            
+            // Add visual feedback on drag over
+            $dragDropArea.on('dragover dragenter', function() {
+                $(this).addClass('drag-over');
+            });
+            
+            // Remove visual feedback on drag leave
+            $dragDropArea.on('dragleave dragend drop', function() {
+                $(this).removeClass('drag-over');
+            });
+            
+            // Handle file drop
+            $dragDropArea.on('drop', function(e) {
+                const files = e.originalEvent.dataTransfer.files;
+                handleFiles(files);
+            });
+            
+            // Function to handle selected files
+            function handleFiles(files) {
+                // Convert FileList to Array and add to selectedFiles
+                Array.from(files).forEach(file => {
+                    // Check if file already exists
+                    const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                    if (!exists) {
+                        selectedFiles.push(file);
+                    }
+                });
+                
+                // Update UI
+                updateFileList();
+            }
+            
+            // Function to update file list UI
+            function updateFileList() {
+                // Clear existing list
+                $fileList.empty();
+                
+                // If no files selected, hide containers
+                if (selectedFiles.length === 0) {
+                    $fileListContainer.addClass('hidden');
+                    $uploadBtnContainer.addClass('hidden');
+                    return;
+                }
+                
+                // Show containers
+                $fileListContainer.removeClass('hidden');
+                $uploadBtnContainer.removeClass('hidden');
+                
+                // Update file count
+                $fileCount.text(selectedFiles.length);
+                
+                // Render each file
+                selectedFiles.forEach((file, index) => {
+                    const fileItem = createFileItem(file, index);
+                    $fileList.append(fileItem);
+                });
+            }
+            
+            // Function to create file item HTML
+            function createFileItem(file, index) {
+                const fileName = file.name;
+                const fileSize = formatFileSize(file.size);
+                const fileIcon = getFileIcon(fileName);
+                const fileIconClass = getFileIconClass(fileName);
+                
+                return `
+                    <div class="file-item bg-gray-50 rounded-lg p-4 flex items-center justify-between" data-index="${index}">
+                        <div class="flex items-center flex-1 min-w-0">
+                            <i class="fas ${fileIcon} text-3xl ${fileIconClass} mr-4"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-gray-800 truncate">${fileName}</p>
+                                <p class="text-sm text-gray-500">${fileSize}</p>
+                                <div class="progress-container hidden mt-2">
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                                    </div>
+                                    <p class="text-xs text-gray-600 mt-1">Uploading... <span class="progress-text">0%</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="remove-file ml-4 text-red-600 hover:text-red-700" data-index="${index}">
+                            <i class="fas fa-times-circle text-2xl"></i>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Function to get file icon based on extension
+            function getFileIcon(fileName) {
+                const ext = fileName.split('.').pop().toLowerCase();
+                
+                const iconMap = {
+                    // Documents
+                    'pdf': 'fa-file-pdf',
+                    'doc': 'fa-file-word',
+                    'docx': 'fa-file-word',
+                    'txt': 'fa-file-alt',
+                    'rtf': 'fa-file-alt',
+                    'odt': 'fa-file-word',
+                    
+                    // Spreadsheets
+                    'xls': 'fa-file-excel',
+                    'xlsx': 'fa-file-excel',
+                    'csv': 'fa-file-csv',
+                    
+                    // Presentations
+                    'ppt': 'fa-file-powerpoint',
+                    'pptx': 'fa-file-powerpoint',
+                    
+                    // Images
+                    'jpg': 'fa-file-image',
+                    'jpeg': 'fa-file-image',
+                    'png': 'fa-file-image',
+                    'gif': 'fa-file-image',
+                    'bmp': 'fa-file-image',
+                    'svg': 'fa-file-image',
+                    'webp': 'fa-file-image',
+                    
+                    // Videos
+                    'mp4': 'fa-file-video',
+                    'avi': 'fa-file-video',
+                    'mov': 'fa-file-video',
+                    'wmv': 'fa-file-video',
+                    'mkv': 'fa-file-video',
+                    'webm': 'fa-file-video',
+                    
+                    // Audio
+                    'mp3': 'fa-file-audio',
+                    'wav': 'fa-file-audio',
+                    'ogg': 'fa-file-audio',
+                    'flac': 'fa-file-audio',
+                    'm4a': 'fa-file-audio',
+                    
+                    // Archives
+                    'zip': 'fa-file-archive',
+                    'rar': 'fa-file-archive',
+                    '7z': 'fa-file-archive',
+                    'tar': 'fa-file-archive',
+                    'gz': 'fa-file-archive',
+                    
+                    // Code
+                    'html': 'fa-file-code',
+                    'css': 'fa-file-code',
+                    'js': 'fa-file-code',
+                    'php': 'fa-file-code',
+                    'py': 'fa-file-code',
+                    'java': 'fa-file-code',
+                    'cpp': 'fa-file-code',
+                    'c': 'fa-file-code',
+                    'json': 'fa-file-code',
+                    'xml': 'fa-file-code',
+                };
+                
+                return iconMap[ext] || 'fa-file';
+            }
+            
+            // Function to get file icon color class
+            function getFileIconClass(fileName) {
+                const ext = fileName.split('.').pop().toLowerCase();
+                
+                if (['pdf'].includes(ext)) return 'file-icon-pdf';
+                if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return 'file-icon-doc';
+                if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) return 'file-icon-img';
+                if (['mp4', 'avi', 'mov', 'wmv', 'mkv', 'webm'].includes(ext)) return 'file-icon-video';
+                if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) return 'file-icon-audio';
+                if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'file-icon-zip';
+                if (['html', 'css', 'js', 'php', 'py', 'java', 'cpp', 'c', 'json', 'xml'].includes(ext)) return 'file-icon-code';
+                
+                return 'file-icon-default';
+            }
+            
+            // Function to format file size
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+            }
+            
+            // Remove file from list
+            $fileList.on('click', '.remove-file', function() {
+                const index = $(this).data('index');
+                selectedFiles.splice(index, 1);
+                updateFileList();
+            });
+            
+            // Clear all files
+            $clearAllBtn.on('click', function() {
+                selectedFiles = [];
+                updateFileList();
+            });
+            
+            // Upload files
+            $uploadBtn.on('click', function() {
+                // Disable upload button
+                $uploadBtn.prop('disabled', true).addClass('opacity-50 cursor-not-allowed');
+                
+                // Hide remove buttons
+                $('.remove-file').addClass('hidden');
+                $clearAllBtn.addClass('hidden');
+                
+                // Upload each file
+                uploadFiles();
+            });
+            
+            // Function to upload files
+            function uploadFiles() {
+                const uploadedFiles = [];
+                let completedUploads = 0;
+                
+                selectedFiles.forEach((file, index) => {
+                    const formData = new FormData();
+                    formData.append('files[]', file);
+                    
+                    // Show progress bar
+                    const $fileItem = $(`.file-item[data-index="${index}"]`);
+                    const $progressContainer = $fileItem.find('.progress-container');
+                    const $progressBar = $fileItem.find('.progress-bar');
+                    const $progressText = $fileItem.find('.progress-text');
+                    
+                    $progressContainer.removeClass('hidden');
+                    
+                    // AJAX upload with progress
+                    $.ajax({
+                        url: 'upload.php',
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        xhr: function() {
+                            const xhr = new window.XMLHttpRequest();
+                            
+                            // Upload progress
+                            xhr.upload.addEventListener('progress', function(e) {
+                                if (e.lengthComputable) {
+                                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                                    $progressBar.css('width', percentComplete + '%');
+                                    $progressText.text(percentComplete + '%');
+                                }
+                            }, false);
+                            
+                            return xhr;
+                        },
+                        success: function(response) {
+                            // Parse response
+                            const data = typeof response === 'string' ? JSON.parse(response) : response;
+                            
+                            if (data.success) {
+                                // Complete progress
+                                $progressBar.css('width', '100%').removeClass('bg-blue-600').addClass('bg-green-600');
+                                $progressText.text('Complete!');
+                                
+                                // Store uploaded file info
+                                uploadedFiles.push({
+                                    name: file.name,
+                                    url: data.url
+                                });
+                            } else {
+                                // Show error
+                                $progressBar.css('width', '100%').removeClass('bg-blue-600').addClass('bg-red-600');
+                                $progressText.text('Failed: ' + data.message);
+                            }
+                            
+                            // Check if all uploads are complete
+                            completedUploads++;
+                            if (completedUploads === selectedFiles.length) {
+                                // Show success modal with links
+                                showSuccessModal(uploadedFiles);
+                            }
+                        },
+                        error: function() {
+                            // Show error
+                            $progressBar.css('width', '100%').removeClass('bg-blue-600').addClass('bg-red-600');
+                            $progressText.text('Upload failed!');
+                            
+                            // Check if all uploads are complete
+                            completedUploads++;
+                            if (completedUploads === selectedFiles.length) {
+                                showSuccessModal(uploadedFiles);
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // Function to show success modal
+            function showSuccessModal(uploadedFiles) {
+                // Clear previous links
+                $fileLinks.empty();
+                
+                // Add file links
+                uploadedFiles.forEach(file => {
+                    const linkItem = `
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <p class="font-semibold text-gray-800 mb-2 truncate">${file.name}</p>
+                            <div class="flex items-center">
+                                <input type="text" value="${file.url}" readonly class="flex-1 bg-white border border-gray-300 rounded-l-lg px-3 py-2 text-sm text-gray-700">
+                                <button class="copy-link bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg transition duration-300" data-url="${file.url}">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    $fileLinks.append(linkItem);
+                });
+                
+                // Show modal
+                $successModal.removeClass('hidden').addClass('flex');
+            }
+            
+            // Copy link to clipboard
+            $fileLinks.on('click', '.copy-link', function() {
+                const url = $(this).data('url');
+                const $btn = $(this);
+                
+                // Copy to clipboard
+                navigator.clipboard.writeText(url).then(function() {
+                    // Show feedback
+                    $btn.html('<i class="fas fa-check"></i>');
+                    
+                    setTimeout(function() {
+                        $btn.html('<i class="fas fa-copy"></i>');
+                    }, 2000);
+                });
+            });
+            
+            // Close modal
+            $closeModal.on('click', function() {
+                closeModal();
+            });
+            
+            $doneBtn.on('click', function() {
+                closeModal();
+            });
+            
+            // Function to close modal and reset
+            function closeModal() {
+                $successModal.addClass('hidden').removeClass('flex');
+                
+                // Reset everything
+                selectedFiles = [];
+                updateFileList();
+                $uploadBtn.prop('disabled', false).removeClass('opacity-50 cursor-not-allowed');
+                $('.remove-file').removeClass('hidden');
+                $clearAllBtn.removeClass('hidden');
+            }
+            
+        });
+    </script>
+    
+</body>
+</html>
